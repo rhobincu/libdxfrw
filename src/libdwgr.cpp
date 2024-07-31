@@ -211,10 +211,10 @@ std::unique_ptr<dwgReader> dwgR::createReaderForVersion(DRW::Version version, st
     return nullptr;
 }
 
-/* Open the file and stores it in filestr, install the correct reader version.
+/* Open the file and stores it in inputStream, install the correct reader version.
  * If fail opening file, error are set as DRW::BAD_OPEN
  * If not are DWG or are unsupported version, error are set as DRW::BAD_VERSION
- * and closes filestr.
+ * and closes inputStream.
  * Return true on succeed or false on fail
 */
 bool dwgR::openFile(std::ifstream *filestr){

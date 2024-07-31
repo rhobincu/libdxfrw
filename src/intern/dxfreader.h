@@ -27,8 +27,8 @@ public:
     };
     enum TYPE type;
 public:
-    dxfReader(std::ifstream *stream){
-        filestr = stream;
+    dxfReader(std::istream *stream){
+        inputStream = stream;
         type = INVALID;
     }
     virtual ~dxfReader(){}
@@ -60,7 +60,7 @@ protected:
     virtual bool readBool() = 0;
 
 protected:
-    std::ifstream *filestr;
+    std::istream *inputStream;
     std::string strData;
     double doubleData;
     signed int intData; //32 bits integer
@@ -73,7 +73,7 @@ private:
 
 class dxfReaderBinary : public dxfReader {
 public:
-    dxfReaderBinary(std::ifstream *stream):dxfReader(stream){skip = false; }
+    dxfReaderBinary(std::istream *stream):dxfReader(stream){skip = false; }
     virtual ~dxfReaderBinary() {}
     virtual bool readCode(int *code);
     virtual bool readString(std::string *text);
@@ -88,7 +88,7 @@ public:
 
 class dxfReaderAscii : public dxfReader {
 public:
-    dxfReaderAscii(std::ifstream *stream):dxfReader(stream){skip = true; }
+    dxfReaderAscii(std::istream *stream):dxfReader(stream){skip = true; }
     virtual ~dxfReaderAscii(){}
     virtual bool readCode(int *code);
     virtual bool readString(std::string *text);

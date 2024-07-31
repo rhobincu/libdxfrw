@@ -88,7 +88,7 @@
         //break in binary files because the conduct is unpredictable
         return false;
 
-    return (filestr->good());
+    return (inputStream->good());
 }*/
 
 bool dxfWriter::writeUtf8String(int code, std::string text) {
@@ -115,31 +115,31 @@ bool dxfWriterBinary::writeString(int code, std::string text) {
 /*bool dxfWriterBinary::readCode(int *code) {
     unsigned short *int16p;
     char buffer[2];
-    filestr->read(buffer,2);
+    inputStream->read(buffer,2);
     int16p = (unsigned short *) buffer;
 //exist a 32bits int (code 90) with 2 bytes???
     if ((*code == 90) && (*int16p>2000)){
         DBG(*code); DBG(" de 16bits\n");
-        filestr->seekg(-4, std::ios_base::cur);
-        filestr->read(buffer,2);
+        inputStream->seekg(-4, std::ios_base::cur);
+        inputStream->read(buffer,2);
         int16p = (unsigned short *) buffer;
     }
     *code = *int16p;
     DBG(*code); DBG("\n");
 
-    return (filestr->good());
+    return (inputStream->good());
 }*/
 
 /*bool dxfWriterBinary::readString() {
-    std::getline(*filestr, strData, '\0');
+    std::getline(*inputStream, strData, '\0');
     DBG(strData); DBG("\n");
-    return (filestr->good());
+    return (inputStream->good());
 }*/
 
 /*bool dxfWriterBinary::readString(std::string *text) {
-    std::getline(*filestr, *text, '\0');
+    std::getline(*inputStream, *text, '\0');
     DBG(*text); DBG("\n");
-    return (filestr->good());
+    return (inputStream->good());
 }*/
 
 bool dxfWriterBinary::writeInt16(int code, int data) {
@@ -219,18 +219,18 @@ dxfWriterAscii::dxfWriterAscii(std::ofstream *stream):dxfWriter(stream){
 }
 
 bool dxfWriterAscii::writeString(int code, std::string text) {
-//    *filestr << code << std::endl << text << std::endl ;
+//    *inputStream << code << std::endl << text << std::endl ;
     filestr->width(3);
     *filestr << std::right << code << '\n';
     filestr->width(0);
     *filestr << std::left << text << '\n';
-    /*    std::getline(*filestr, strData, '\0');
+    /*    std::getline(*inputStream, strData, '\0');
     DBG(strData); DBG("\n");*/
     return (filestr->good());
 }
 
 bool dxfWriterAscii::writeInt16(int code, int data) {
-//    *filestr << std::right << code << std::endl << data << std::endl;
+//    *inputStream << std::right << code << std::endl << data << std::endl;
     filestr->width(3);
     *filestr << std::right << code << '\n';
     filestr->width(5);
@@ -243,7 +243,7 @@ bool dxfWriterAscii::writeInt32(int code, int data) {
 }
 
 bool dxfWriterAscii::writeInt64(int code, unsigned long long int data) {
-//    *filestr << code << std::endl << data << std::endl;
+//    *inputStream << code << std::endl << data << std::endl;
     filestr->width(3);
     *filestr << std::right << code << '\n';
     filestr->width(5);
@@ -252,13 +252,13 @@ bool dxfWriterAscii::writeInt64(int code, unsigned long long int data) {
 }
 
 bool dxfWriterAscii::writeDouble(int code, double data) {
-//    std::streamsize prec = filestr->precision();
-//    filestr->precision(12);
-//    *filestr << code << std::endl << data << std::endl;
+//    std::streamsize prec = inputStream->precision();
+//    inputStream->precision(12);
+//    *inputStream << code << std::endl << data << std::endl;
     filestr->width(3);
     *filestr << std::right << code << '\n';
     *filestr << data << '\n';
-//    filestr->precision(prec);
+//    inputStream->precision(prec);
     return (filestr->good());
 }
 

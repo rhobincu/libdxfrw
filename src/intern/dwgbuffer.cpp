@@ -564,8 +564,8 @@ std::string dwgBuffer::get8bitStr(){
     if (!good)
         return std::string();
 
-/*    filestr->read (buffer,textSize);
-    if (!filestr->good())
+/*    inputStream->read (buffer,textSize);
+    if (!inputStream->good())
         return std::string();
 
     duint8 tmp;
@@ -893,8 +893,8 @@ duint32 dwgBuffer::crc32(duint32 seed,dint32 start,dint32 end){
 /*std::string dwgBuffer::getBytes(int size){
     char buffer[size];
     char tmp;
-    filestr->read (buffer,size);
-    if (!filestr->good())
+    inputStream->read (buffer,size);
+    if (!inputStream->good())
         return NULL;
 
     if (bitPos != 0){
