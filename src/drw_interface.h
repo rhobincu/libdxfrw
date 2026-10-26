@@ -127,6 +127,9 @@ public:
      */
     virtual void addAttrib(const DRW_Attrib& /*data*/) {}
 
+    /** Called for every draw order table (SORTENTSTABLE object). Does nothing by default. */
+    virtual void addSortEntsTable(const DRW_SortEntsTable& /*data*/) {}
+
     /**
      * Called for every aligned dimension entity. 
      */

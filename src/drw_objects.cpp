@@ -1151,6 +1151,30 @@ bool DRW_Vport::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
     return buf->isGood();
 }
 
+bool DRW_SortEntsTable::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
+    switch (code) {
+    case 5:
+        // The first code 5 is the handle of the table, the others are the sort handles of the entries.
+        if (entries.empty())
+            handle = reader->getHandleString();
+        else
+            entries.back().second = reader->getHandleString();
+        break;
+    case 330:
+        // The owner of the table (the block's extension dictionary) comes first, the sorted BLOCK_RECORD last.
+        blockHandle = reader->getHandleString();
+        break;
+    case 331: {
+        const duint32 entity = reader->getHandleString();
+        entries.emplace_back(entity, entity);
+        break;
+    }
+    default:
+        break;
+    }
+    return true;
+}
+
 bool DRW_ImageDef::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
     switch (code) {
     case 1:

@@ -185,6 +185,8 @@ protected:
 
     bool processImageDef();
 
+    bool processSortEntsTable();
+
     bool processDimension();
 
     bool processLeader();

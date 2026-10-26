@@ -443,6 +443,21 @@ public:
 };
 
 
+//! Class to handle the draw order of the entities in a block (SORTENTSTABLE object)
+/*!
+*  Entities are drawn in ascending order of their sort handles. Entities without an entry use their own handle.
+*/
+class DRW_SortEntsTable {
+    SETOBJFRIENDS
+public:
+    duint32 handle = DRW::NoHandle;      /*!< object handle, code 5 */
+    duint32 blockHandle = DRW::NoHandle; /*!< BLOCK_RECORD of the sorted entities, code 330 */
+    std::vector<std::pair<duint32, duint32>> entries; /*!< entity handle (code 331) and sort handle (code 5) */
+
+protected:
+    bool parseCode(int code, const std::unique_ptr<dxfReader>& reader);
+};
+
 //! Class to handle imagedef entries
 /*!
 *  Class to handle image definitions object entries

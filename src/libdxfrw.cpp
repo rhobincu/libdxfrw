@@ -2990,6 +2990,8 @@ bool dxfRW::processObjects() {
             processed = processImageDef();
         } else if ("PLOTSETTINGS" == nextentity) {
             processed = processPlotSettings();
+        } else if ("SORTENTSTABLE" == nextentity) {
+            processed = processSortEntsTable();
         } else {
             if (!reader->readRec(&code)) {
                 return setError(DRW::BAD_READ_OBJECTS); //end of file without ENDSEC
@@ -3001,6 +3003,29 @@ bool dxfRW::processObjects() {
             processed = true;
         }
     } while (processed);
+
+    return setError(DRW::BAD_READ_OBJECTS);
+}
+
+bool dxfRW::processSortEntsTable() {
+    DRW_DBG("dxfRW::processSortEntsTable");
+    int code;
+    DRW_SortEntsTable table;
+    while (reader->readRec(&code)) {
+        DRW_DBG(code);
+        DRW_DBG("\n");
+        if (0 == code) {
+            nextentity = reader->getString();
+            DRW_DBG(nextentity);
+            DRW_DBG("\n");
+            iface->addSortEntsTable(table);
+            return true;  //found new object or ENDSEC, terminate
+        }
+
+        if (!table.parseCode(code, reader)) {
+            return setError(DRW::BAD_CODE_PARSED);
+        }
+    }
 
     return setError(DRW::BAD_READ_OBJECTS);
 }
