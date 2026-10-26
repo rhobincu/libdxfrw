@@ -1522,6 +1522,36 @@ bool DRW_MText::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
     return buf->isGood();
 }
 
+bool DRW_Attrib::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
+    // Multiline attributes (R2018+) append an embedded MTEXT; the single line text before it is kept.
+    if (embeddedObject)
+        return true;
+    switch (code) {
+    case 2:
+        tag = reader->getUtf8String();
+        break;
+    case 3:
+        prompt = reader->getUtf8String();
+        break;
+    case 70:
+        flags = reader->getInt32();
+        break;
+    case 73:
+        fieldLength = reader->getInt32();
+        break;
+    case 74:
+        alignV = (VAlign)reader->getInt32();
+        break;
+    case 101:
+        embeddedObject = true;
+        break;
+    default:
+        return DRW_Text::parseCode(code, reader);
+    }
+
+    return true;
+}
+
 void DRW_MText::updateAngle() {
     if (hasXAxisVec) {
         angle = atan2(secPoint.y, secPoint.x) * ARAD;

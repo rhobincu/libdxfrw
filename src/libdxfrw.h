@@ -169,6 +169,8 @@ protected:
 
     bool processText();
 
+    bool processAttrib(DRW::ETYPE type);
+
     bool processMText();
 
     bool processHatch();

@@ -2340,6 +2340,10 @@ bool dxfRW::processEntities(bool isblock) {
             processed = processPolyline();
         } else if (nextentity == "TEXT") {
             processed = processText();
+        } else if (nextentity == "ATTRIB") {
+            processed = processAttrib(DRW::ATTRIB);
+        } else if (nextentity == "ATTDEF") {
+            processed = processAttrib(DRW::ATTDEF);
         } else if (nextentity == "MTEXT") {
             processed = processMText();
         } else if (nextentity == "HATCH") {
@@ -2733,6 +2737,29 @@ bool dxfRW::processVertex(DRW_Polyline *pl) {
         }
 
         if (!v->parseCode(code, reader)) { //the members of v are reinitialized here
+            return setError(DRW::BAD_CODE_PARSED);
+        }
+    }
+
+    return setError(DRW::BAD_READ_ENTITIES);
+}
+
+bool dxfRW::processAttrib(DRW::ETYPE type) {
+    DRW_DBG("dxfRW::processAttrib");
+    int code;
+    DRW_Attrib attrib(type);
+    while (reader->readRec(&code)) {
+        DRW_DBG(code);
+        DRW_DBG("\n");
+        if (0 == code) {
+            nextentity = reader->getString();
+            DRW_DBG(nextentity);
+            DRW_DBG("\n");
+            iface->addAttrib(attrib);
+            return true;  //found new entity or ENDSEC, terminate
+        }
+
+        if (!attrib.parseCode(code, reader)) {
             return setError(DRW::BAD_CODE_PARSED);
         }
     }

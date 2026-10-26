@@ -82,7 +82,10 @@ namespace DRW {
         VIEWPORT,
 //        WIPEOUT, //WIPEOUTVARIABLE
         XLINE,
-        UNKNOWN
+        UNKNOWN,
+        // Appended after UNKNOWN to keep the values of the existing types.
+        ATTDEF,
+        ATTRIB
     };
 
 }
@@ -675,6 +678,46 @@ public:
     double interlin;     /*!< width factor, code 44 */
 private:
     bool hasXAxisVec; /* renamed by djm for better description */
+};
+
+//! Class to handle attribute (ATTRIB) and attribute definition (ATTDEF) entities
+/*!
+*  Attributes follow the INSERT they belong to (which has code 66 set) and end with a SEQEND. Their geometry is in
+*  the coordinate system of the space that contains the INSERT, not in the one of the block. Attribute definitions
+*  are part of block definitions; text holds the default value.
+*  The vertical alignment uses code 74, because code 73 is the field length for attributes.
+*/
+class DRW_Attrib : public DRW_Text {
+    SETENTFRIENDS
+public:
+    //! Attribute flags, code 70.
+    enum Flags {
+        Invisible = 1,  /*!< not displayed */
+        Constant = 2,   /*!< no prompt, the value is the same in every insert */
+        Verify = 4,     /*!< the value is verified when inserted */
+        Preset = 8      /*!< no prompt, the default value is used when inserted */
+    };
+
+    explicit DRW_Attrib(DRW::ETYPE type = DRW::ATTRIB) {
+        eType = type;
+        flags = 0;
+        fieldLength = 0;
+        embeddedObject = false;
+    }
+
+    bool isInvisible() const { return flags & Invisible; }
+    bool isConstant() const { return flags & Constant; }
+
+protected:
+    bool parseCode(int code, const std::unique_ptr<dxfReader>& reader) override;
+
+public:
+    UTF8STRING tag;      /*!< tag, code 2 */
+    UTF8STRING prompt;   /*!< prompt, only for attribute definitions, code 3 */
+    int flags;           /*!< attribute flags, code 70 */
+    int fieldLength;     /*!< field length, code 73 */
+private:
+    bool embeddedObject; /*!< true after code 101: the remaining codes describe a multiline (MTEXT) attribute */
 };
 
 //! Class to handle vertex

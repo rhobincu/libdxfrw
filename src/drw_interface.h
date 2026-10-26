@@ -122,6 +122,12 @@ public:
     virtual void addText(const DRW_Text& data) = 0;
 
     /**
+     * Called for every attribute (ATTRIB) and attribute definition (ATTDEF) entity, distinguished by eType.
+     * Attributes are reported after the INSERT they belong to. Does nothing by default.
+     */
+    virtual void addAttrib(const DRW_Attrib& /*data*/) {}
+
+    /**
      * Called for every aligned dimension entity. 
      */
     virtual void addDimAlign(const DRW_DimAligned *data) = 0;
