@@ -1851,6 +1851,28 @@ bool DRW_Hatch::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
     case 98: //seed points ??
         clearEntities();
         break;
+    case 53: // A pattern definition line starts with its angle.
+        patternLines.emplace_back();
+        patternLines.back().angle = reader->getDouble();
+        break;
+    case 43:
+        if (!patternLines.empty()) patternLines.back().basePoint.x = reader->getDouble();
+        break;
+    case 44:
+        if (!patternLines.empty()) patternLines.back().basePoint.y = reader->getDouble();
+        break;
+    case 45:
+        if (!patternLines.empty()) patternLines.back().offset.x = reader->getDouble();
+        break;
+    case 46:
+        if (!patternLines.empty()) patternLines.back().offset.y = reader->getDouble();
+        break;
+    case 79:
+        if (!patternLines.empty()) patternLines.back().dashes.reserve(reader->getInt32());
+        break;
+    case 49:
+        if (!patternLines.empty()) patternLines.back().dashes.push_back(reader->getDouble());
+        break;
     default:
         return DRW_Point::parseCode(code, reader);
     }

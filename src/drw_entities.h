@@ -892,6 +892,18 @@ public:
     std::vector<std::shared_ptr<DRW_Entity>> objlist;      /*!< entities list */
 };
 
+//! A line family of a hatch pattern
+/*!
+*  The lines go through basePoint + k * offset, for every integer k, in the direction given by angle. The values are
+*  in drawing units, with the pattern angle and scale of the hatch already applied.
+*/
+struct DRW_HatchPatternLine {
+    double angle = 0;               /*!< line angle in degrees, code 53 */
+    DRW_Coord basePoint;            /*!< base point, codes 43 and 44 */
+    DRW_Coord offset;               /*!< offset between two lines, codes 45 and 46 */
+    std::vector<double> dashes;     /*!< dash lengths: positive for dashes, negative for gaps, 0 for dots, code 49 */
+};
+
 //! Class to handle hatch entity
 /*!
 *  Class to handle hatch entity
@@ -930,6 +942,7 @@ public:
     double angle;              /*!< hatch pattern angle, code 52 */
     double scale;              /*!< hatch pattern scale, code 41 */
     int deflines;              /*!< number of pattern definition lines, code 78 */
+    std::vector<DRW_HatchPatternLine> patternLines; /*!< pattern definition lines, codes 53, 43-46, 79 and 49 */
 
     std::vector<std::shared_ptr<DRW_HatchLoop>> looplist;  /*!< polyline list */
 
