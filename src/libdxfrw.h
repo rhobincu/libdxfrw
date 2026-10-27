@@ -171,6 +171,12 @@ protected:
 
     bool processAttrib(DRW::ETYPE type);
 
+    bool processWipeout();
+
+    bool processAcadTable();
+
+    bool processMLeader();
+
     bool processMText();
 
     bool processHatch();

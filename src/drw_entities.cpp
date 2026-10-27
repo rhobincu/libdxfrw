@@ -720,15 +720,9 @@ bool DRW_Ellipse::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
 }
 
 void DRW_Ellipse::applyExtrusion(){
-    if (haveExtrusion) {
-        calculateAxis(extPoint);
-        extrudePoint(extPoint, &secPoint);
-        double intialparam = staparam;
-        if (extPoint.z < 0.){
-            staparam = M_PIx2 - endparam;
-            endparam = M_PIx2 - intialparam;
-        }
-    }
+    // The center and the major axis of ellipses are in WCS already. The extrusion only defines the direction of the
+    // minor axis (extrusion x major axis), so mirroring the major axis here (without the center) misplaced ellipses
+    // with a (0, 0, -1) extrusion.
 }
 
 //if ratio > 1 minor axis are greather than major axis, correct it
@@ -1522,6 +1516,65 @@ bool DRW_MText::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
     return buf->isGood();
 }
 
+bool DRW_MLeader::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
+    const auto readCoord = [&](DRW_Coord &coord, const int xCode) {
+        const double value = reader->getDouble();
+        if (code == xCode) coord.x = value;
+        else if (code == xCode + 10) coord.y = value;
+        else coord.z = value;
+    };
+    // Section markers.
+    if (code == 300) { section = Section::Context; return true; }
+    if (code == 301) { section = Section::Entity; return true; }
+    if (code == 302) { section = Section::Leader; leaders.emplace_back(); return true; }
+    if (code == 303) { section = Section::Context; return true; }
+    if (code == 304 && section == Section::Leader) {
+        section = Section::LeaderLine;
+        leaders.back().lines.emplace_back();
+        return true;
+    }
+    if (code == 305) { section = Section::Leader; return true; }
+
+    switch (section) {
+    case Section::LeaderLine:
+        if (code == 10) leaders.back().lines.back().emplace_back(reader->getDouble(), 0.0, 0.0);
+        else if ((code == 20 || code == 30) && !leaders.back().lines.back().empty())
+            readCoord(leaders.back().lines.back().back(), 10);
+        return true;
+    case Section::Leader:
+        if (code == 10 || code == 20 || code == 30) readCoord(leaders.back().landingPoint, 10);
+        else if (code == 11 || code == 21 || code == 31) readCoord(leaders.back().doglegVector, 11);
+        else if (code == 40) leaders.back().doglegLength = reader->getDouble();
+        return true;
+    case Section::Context:
+        switch (code) {
+        case 40: scale = reader->getDouble(); break;
+        case 140: arrowSize = reader->getDouble(); break;
+        case 41: textHeight = reader->getDouble(); break;
+        case 43: textWidth = reader->getDouble(); break;
+        case 290: hasText = reader->getInt32() != 0; break;
+        case 296: hasBlock = reader->getInt32() != 0; break;
+        case 304: text = reader->getUtf8String(); break;
+        case 171: textAttachment = reader->getInt32(); break;
+        case 341: blockRecord = reader->getHandleString(); break;
+        case 46: blockRotation = reader->getDouble(); break;
+        case 12: case 22: case 32: readCoord(textLocation, 12); break;
+        case 13: case 23: case 33: readCoord(textDirection, 13); break;
+        case 15: case 25: case 35: readCoord(blockPosition, 15); break;
+        case 16: case 26: case 36: readCoord(blockScale, 16); break;
+        default: break;
+        }
+        return true;
+    case Section::Entity:
+        if (code == 170) {
+            leaderType = reader->getInt32();
+            return true;
+        }
+        return DRW_Entity::parseCode(code, reader);
+    }
+    return true;
+}
+
 bool DRW_Attrib::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
     // Multiline attributes (R2018+) append an embedded MTEXT; the single line text before it is kept.
     if (embeddedObject)
@@ -1781,28 +1834,67 @@ bool DRW_Hatch::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
             plvert = pline->addVertex();
             plvert->x = reader->getDouble();
         }
+        else if (spline) spline->controllist.push_back(std::make_shared<DRW_Coord>(reader->getDouble(), 0.0, 0.0));
         break;
     case 20:
         if (pt) pt->basePoint.y = reader->getDouble();
         else if (plvert) plvert ->y = reader->getDouble();
+        else if (spline && !spline->controllist.empty()) spline->controllist.back()->y = reader->getDouble();
         break;
     case 11:
         if (line) line->secPoint.x = reader->getDouble();
         else if (ellipse) ellipse->secPoint.x = reader->getDouble();
+        else if (spline) spline->fitlist.push_back(std::make_shared<DRW_Coord>(reader->getDouble(), 0.0, 0.0));
         break;
     case 21:
         if (line) line->secPoint.y = reader->getDouble();
         else if (ellipse) ellipse->secPoint.y = reader->getDouble();
+        else if (spline && !spline->fitlist.empty()) spline->fitlist.back()->y = reader->getDouble();
         break;
     case 40:
         if (arc) arc->radious = reader->getDouble();
         else if (ellipse) ellipse->ratio = reader->getDouble();
+        else if (spline) spline->knotslist.push_back(reader->getDouble());
+        break;
+    case 94: // Spline edge degree.
+        if (spline) spline->degree = reader->getInt32();
+        break;
+    case 74: // Spline edge periodic flag.
+        if (spline && reader->getInt32()) spline->flags |= 2;
+        break;
+    case 450:
+        gradient = reader->getInt32();
+        break;
+    case 452:
+        gradientSingleColor = reader->getInt32();
+        break;
+    case 460:
+        gradientAngle = reader->getDouble();
+        break;
+    case 461:
+        gradientShift = reader->getDouble();
+        break;
+    case 462:
+        gradientTint = reader->getDouble();
+        break;
+    case 463: // Starts the definition of a gradient color.
+        gradientColors.emplace_back();
+        break;
+    case 63:
+        if (!gradientColors.empty()) gradientColors.back().color = reader->getInt32();
+        break;
+    case 421:
+        if (!gradientColors.empty()) gradientColors.back().color24 = reader->getInt32();
+        break;
+    case 470:
+        gradientName = reader->getUtf8String();
         break;
     case 41:
         scale = reader->getDouble();
         break;
     case 42:
         if (plvert) plvert ->bulge = reader->getDouble();
+        else if (spline) spline->weightlist.push_back(reader->getDouble());
         break;
     case 50:
         if (arc) arc->staangle = reader->getDouble()/ARAD;
@@ -1818,6 +1910,7 @@ bool DRW_Hatch::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
     case 73:
         if (arc) arc->isccw = reader->getInt32();
         else if (pline) pline->flags = reader->getInt32();
+        else if (spline && reader->getInt32()) spline->flags |= 4; // Rational.
         break;
     case 75:
         hstyle = reader->getInt32();
@@ -2260,6 +2353,15 @@ bool DRW_Spline::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
 
 bool DRW_Image::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
     switch (code) {
+    case 71:
+        clipType = reader->getInt32();
+        break;
+    case 14:
+        clipVertices.emplace_back(reader->getDouble(), 0.0, 0.0);
+        break;
+    case 24:
+        if (!clipVertices.empty()) clipVertices.back().y = reader->getDouble();
+        break;
     case 12:
         vVector.x = reader->getDouble();
         break;

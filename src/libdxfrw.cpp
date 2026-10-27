@@ -2344,6 +2344,12 @@ bool dxfRW::processEntities(bool isblock) {
             processed = processAttrib(DRW::ATTRIB);
         } else if (nextentity == "ATTDEF") {
             processed = processAttrib(DRW::ATTDEF);
+        } else if (nextentity == "WIPEOUT") {
+            processed = processWipeout();
+        } else if (nextentity == "ACAD_TABLE") {
+            processed = processAcadTable();
+        } else if (nextentity == "MULTILEADER") {
+            processed = processMLeader();
         } else if (nextentity == "MTEXT") {
             processed = processMText();
         } else if (nextentity == "HATCH") {
@@ -2861,6 +2867,110 @@ bool dxfRW::processSpline() {
     return setError(DRW::BAD_READ_ENTITIES);
 }
 
+
+bool dxfRW::processWipeout() {
+    DRW_DBG("dxfRW::processWipeout");
+    int code;
+    DRW_Image wipeout;
+    wipeout.eType = DRW::WIPEOUT;
+    while (reader->readRec(&code)) {
+        DRW_DBG(code);
+        DRW_DBG("\n");
+        if (0 == code) {
+            nextentity = reader->getString();
+            DRW_DBG(nextentity);
+            DRW_DBG("\n");
+            iface->addWipeout(wipeout);
+            return true;  //found new entity or ENDSEC, terminate
+        }
+
+        if (!wipeout.parseCode(code, reader)) {
+            return setError(DRW::BAD_CODE_PARSED);
+        }
+    }
+
+    return setError(DRW::BAD_READ_ENTITIES);
+}
+
+bool dxfRW::processMLeader() {
+    DRW_DBG("dxfRW::processMLeader");
+    int code;
+    DRW_MLeader leader;
+    while (reader->readRec(&code)) {
+        DRW_DBG(code);
+        DRW_DBG("\n");
+        if (0 == code) {
+            nextentity = reader->getString();
+            DRW_DBG(nextentity);
+            DRW_DBG("\n");
+            iface->addMLeader(leader);
+            return true;  //found new entity or ENDSEC, terminate
+        }
+
+        if (!leader.parseCode(code, reader)) {
+            return setError(DRW::BAD_CODE_PARSED);
+        }
+    }
+
+    return setError(DRW::BAD_READ_ENTITIES);
+}
+
+bool dxfRW::processAcadTable() {
+    DRW_DBG("dxfRW::processAcadTable");
+    // Tables are drawn by an anonymous block (*T...), referenced like an INSERT. Only the entity codes before the
+    // block reference subclass are parsed as such, because the cell data reuses codes like 62 and 70.
+    int code;
+    DRW_Insert insert;
+    bool blockReference = false, hasName = false, hasPoint = false, hasDirection = false;
+    while (reader->readRec(&code)) {
+        DRW_DBG(code);
+        DRW_DBG("\n");
+        if (0 == code) {
+            nextentity = reader->getString();
+            DRW_DBG(nextentity);
+            DRW_DBG("\n");
+            iface->addInsert(insert);
+            return true;  //found new entity or ENDSEC, terminate
+        }
+
+        if (!blockReference) {
+            if (code == 100 && reader->getString() == "AcDbBlockReference") {
+                blockReference = true;
+            } else if (!insert.parseCode(code, reader)) {
+                return setError(DRW::BAD_CODE_PARSED);
+            }
+            continue;
+        }
+        switch (code) {
+        case 2:
+            if (!hasName) insert.name = reader->getUtf8String();
+            hasName = true;
+            break;
+        case 10:
+            if (!hasPoint) insert.basePoint.x = reader->getDouble();
+            break;
+        case 20:
+            if (!hasPoint) insert.basePoint.y = reader->getDouble();
+            break;
+        case 30:
+            if (!hasPoint) insert.basePoint.z = reader->getDouble();
+            hasPoint = true;
+            break;
+        case 11:
+            if (!hasDirection) insert.angle = reader->getDouble();
+            break;
+        case 21:
+            // The horizontal direction of the table gives its rotation.
+            if (!hasDirection) insert.angle = atan2(reader->getDouble(), insert.angle);
+            hasDirection = true;
+            break;
+        default:
+            break;
+        }
+    }
+
+    return setError(DRW::BAD_READ_ENTITIES);
+}
 
 bool dxfRW::processImage() {
     DRW_DBG("dxfRW::processImage");

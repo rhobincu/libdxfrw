@@ -130,6 +130,12 @@ public:
     /** Called for every draw order table (SORTENTSTABLE object). Does nothing by default. */
     virtual void addSortEntsTable(const DRW_SortEntsTable& /*data*/) {}
 
+    /** Called for every wipeout (a polygon filled with the background color). Does nothing by default. */
+    virtual void addWipeout(const DRW_Image& /*data*/) {}
+
+    /** Called for every multileader. Does nothing by default. */
+    virtual void addMLeader(const DRW_MLeader& /*data*/) {}
+
     /**
      * Called for every aligned dimension entity. 
      */

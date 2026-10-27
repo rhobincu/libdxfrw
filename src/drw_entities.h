@@ -85,7 +85,9 @@ namespace DRW {
         UNKNOWN,
         // Appended after UNKNOWN to keep the values of the existing types.
         ATTDEF,
-        ATTRIB
+        ATTRIB,
+        WIPEOUT,
+        MLEADER
     };
 
 }
@@ -680,6 +682,57 @@ private:
     bool hasXAxisVec; /* renamed by djm for better description */
 };
 
+//! Class to handle multileader (MULTILEADER) entities
+/*!
+*  Only the geometry is kept: the leader lines, landings and doglegs, the arrowhead size and the content (MTEXT or
+*  block reference). The data is nested in CONTEXT_DATA{, LEADER{ and LEADER_LINE{ sections (codes 300 to 305),
+*  which reuse the same codes for different values.
+*/
+class DRW_MLeader : public DRW_Entity {
+    SETENTFRIENDS
+public:
+    //! A leader: its lines go from their first vertex (the arrowhead) to the landing point.
+    struct Leader {
+        std::vector<std::vector<DRW_Coord>> lines; /*!< leader line vertices, codes 10, 20 & 30 */
+        DRW_Coord landingPoint;     /*!< last leader line point, codes 10, 20 & 30 */
+        DRW_Coord doglegVector;     /*!< dogleg direction, codes 11, 21 & 31 */
+        double doglegLength = 0;    /*!< dogleg length, code 40 */
+    };
+
+    DRW_MLeader() {
+        eType = DRW::MLEADER;
+    }
+
+    void applyExtrusion() override {}
+
+protected:
+    bool parseCode(int code, const std::unique_ptr<dxfReader>& reader) override;
+    //! Multileaders are not read from DWG files.
+    bool parseDwg(DRW::Version /*version*/, dwgBuffer * /*buf*/, duint32 /*bs*/ = 0) override { return false; }
+
+public:
+    std::vector<Leader> leaders;
+    int leaderType = 1;             /*!< 1=straight lines, 2=spline, 0=invisible, code 170 */
+    double scale = 1;               /*!< overall scale, code 40 of the context */
+    double arrowSize = 0;           /*!< arrowhead size, code 140 of the context */
+    bool hasText = false;           /*!< code 290 of the context */
+    UTF8STRING text;                /*!< MTEXT content, code 304 of the context */
+    DRW_Coord textLocation;         /*!< MTEXT insertion point, codes 12, 22 & 32 */
+    DRW_Coord textDirection;        /*!< MTEXT X axis, codes 13, 23 & 33 */
+    double textHeight = 0;          /*!< code 41 of the context */
+    double textWidth = 0;           /*!< code 43 of the context */
+    int textAttachment = 1;         /*!< MTEXT attachment point, code 171 of the context */
+    bool hasBlock = false;          /*!< code 296 of the context */
+    duint32 blockRecord = 0;        /*!< handle of the BLOCK_RECORD of the content, code 341 of the context */
+    DRW_Coord blockPosition;        /*!< codes 15, 25 & 35 */
+    DRW_Coord blockScale{1, 1, 1};  /*!< codes 16, 26 & 36 */
+    double blockRotation = 0;       /*!< in radians, code 46 */
+
+private:
+    enum class Section { Entity, Context, Leader, LeaderLine };
+    Section section = Section::Entity;
+};
+
 //! Class to handle attribute (ATTRIB) and attribute definition (ATTDEF) entities
 /*!
 *  Attributes follow the INSERT they belong to (which has code 66 set) and end with a SEQEND. Their geometry is in
@@ -944,6 +997,19 @@ public:
     int deflines;              /*!< number of pattern definition lines, code 78 */
     std::vector<DRW_HatchPatternLine> patternLines; /*!< pattern definition lines, codes 53, 43-46, 79 and 49 */
 
+    //! A color of a gradient fill.
+    struct GradientColor {
+        int color = 256;           /*!< ACI color, code 63 */
+        int color24 = -1;          /*!< true color (0xRRGGBB), code 421, -1 if not set */
+    };
+    int gradient = 0;               /*!< gradient fill flag, code 450, 1=gradient */
+    int gradientSingleColor = 0;    /*!< one color gradient, code 452 */
+    double gradientAngle = 0;       /*!< gradient rotation in radians, code 460 */
+    double gradientShift = 0;       /*!< gradient shift, code 461, 0=centered */
+    double gradientTint = 0;        /*!< tint of one color gradients, code 462, from 0 (dark) to 1 (light) */
+    std::vector<GradientColor> gradientColors; /*!< gradient colors, codes 463, 63 & 421 */
+    UTF8STRING gradientName;        /*!< LINEAR, CYLINDER, INVCYLINDER, SPHERICAL, ..., code 470 */
+
     std::vector<std::shared_ptr<DRW_HatchLoop>> looplist;  /*!< polyline list */
 
 private:
@@ -1032,6 +1098,10 @@ public:
     int brightness;            /*!< Brightness value, code 281, (0-100) default 50 */
     int contrast;              /*!< Brightness value, code 282, (0-100) default 50 */
     int fade;                  /*!< Brightness value, code 283, (0-100) default 0 */
+    int clipType = 1;          /*!< Clipping boundary type, code 71, 1=rectangle 2=polygon */
+    /*! Clipping boundary vertices, codes 14 & 24, in pixels with the origin in the top left corner of the image. A
+     *  rectangle has its two opposite corners. Wipeouts are 1 x 1 pixel images, with vertices from -0.5 to 0.5. */
+    std::vector<DRW_Coord> clipVertices;
 
 };
 
